@@ -15,13 +15,13 @@ You must contact AWS Support if you want to create a new default VPC.
 **Usage:**
 
 ```
-vpc-delete.py
+remove-vpc.py
 ```
 
 **Output:**
 
 ```
-./vpc-delete.py
+./remove-vpc.py
 US-EAST-1
 vpc-id:  vpc-5ece013b
 Removing igw-id:  igw-845fa8e1
