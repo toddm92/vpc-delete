@@ -1,30 +1,27 @@
 ### Remove Those Default VPCs
 
-<p>
 This Python script attempts to delete those pesky default VPCs in all regions from your AWS account.
-<p>
-<b>Warning:</b> 
-<br>
+
+**Warning:**
+
 Deleting the default VPC is a permanent action.
-<br>
 You must contact AWS Support if you want to create a new default VPC.
 
-<b>Requirements:</b>
-<ul>
- <li> Tested w/ python version 2.7 / boto version 2.38
- <li> Valid AWS API keys
-</ul>
+**Requirements:**
 
-<b>Usage:</b>
-<p>
-<pre>
-default-vpc.py
-</pre>
+* Tested w/ python version 2.7 / boto version 2.38
+* Valid AWS API keys
 
-<b>Output:</b>
-<p>
-<pre>
-./default-vpc.py
+**Usage:**
+
+```
+vpc-delete.py
+```
+
+**Output:**
+
+```
+./vpc-delete.py
 US-EAST-1
 vpc-id:  vpc-5ece013b
 Removing igw-id:  igw-845fa8e1
@@ -88,9 +85,8 @@ Removing sub-id:  subnet-da1bf8bf
 Removing sub-id:  subnet-8f4c10c9
 Removing sub-id:  subnet-13d4d467
 Removing vpc-id:  vpc-dc288ab9
-</pre>
+```
 
-<b>To Do:</b>
-<ul>
- <li> Add a simple verify check.
-</ul>
+**To Do:**
+
+- [ ] Add a simple verify check.
