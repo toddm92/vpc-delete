@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # Python Version: 2.7
-# Boto Version 2.38
+# Boto Version 2.49
 #
 # Remove those pesky default VPCs
 #
@@ -31,7 +31,7 @@ def get_regions():
 
 def del_igw(conn, vpcid):
   """ Detach and delete the internet-gateway """
-      
+
   igw = conn.get_all_internet_gateways(filters={'attachment.vpc-id': vpcid})
   if igw:
     try:
@@ -43,11 +43,11 @@ def del_igw(conn, vpcid):
 
 def del_sub(conn, vpcid):
   """ Delete the subnets """
-      
+
   subs = conn.get_all_subnets(filters={'vpcId': [vpcid]})
   if subs:
     try:
-      for sub in subs: 
+      for sub in subs:
         print("Removing sub-id: ", sub.id) if (VERBOSE == 1) else ""
         status = conn.delete_subnet(sub.id)
     except boto.exception.EC2ResponseError as e:
@@ -55,7 +55,7 @@ def del_sub(conn, vpcid):
 
 def del_rtb(conn, vpcid):
   """ Delete the route-tables """
-      
+
   rtbs = conn.get_all_route_tables(filters={'vpc-id': vpcid})
   if rtbs:
     try:
@@ -71,11 +71,11 @@ def del_rtb(conn, vpcid):
 
 def del_acl(conn, vpcid):
   """ Delete the network-access-lists """
-      
+
   acls = conn.get_all_network_acls(filters={'vpc-id': vpcid})
   if acls:
     try:
-      for acl in acls: 
+      for acl in acls:
         if acl.default == 'true':
           continue
         print("Removing acl-id: ", acl.id) if (VERBOSE == 1) else ""
@@ -85,11 +85,11 @@ def del_acl(conn, vpcid):
 
 def del_sgp(conn, vpcid):
   """ Delete any security-groups """
-      
+
   sgps = conn.get_all_security_groups(filters={'vpc-id': vpcid})
   if sgps:
     try:
-      for sg in sgps: 
+      for sg in sgps:
         if sg.name == 'default':
           continue
         print("Removing sgp-id: ", sg.id) if (VERBOSE == 1) else ""
@@ -99,7 +99,7 @@ def del_sgp(conn, vpcid):
 
 def del_vpc(conn, vpcid):
   """ Delete the VPC """
-      
+
   try:
     print("Removing vpc-id: ", vpcid)
     status = conn.delete_vpc(vpcid)
@@ -112,26 +112,25 @@ def del_vpc(conn, vpcid):
 def main(keyid, secret):
   """
   Do the work - order of operation
-
   1.) Delete the internet-gateway
   2.) Delete subnets
   3.) Delete route-tables
   4.) Delete network access-lists
   5.) Delete security-groups
-  6.) Delete the VPC 
+  6.) Delete the VPC
   """
 
   regions = get_regions()
 
-  for region in regions:
+  for awsregion in regions:
     try:
-      conn = boto.vpc.VPCConnection(aws_access_key_id=keyid, aws_secret_access_key=secret, region=region)
+      conn = boto.vpc.VPCConnection(aws_access_key_id=keyid, aws_secret_access_key=secret, region=awsregion)
       attributes = conn.describe_account_attributes(attribute_names='default-vpc')
     except boto.exception.EC2ResponseError as e:
       print(e.message)
       exit(1)
     else:
-      print("\n" + region.name.upper())
+      print("\n" + awsregion.name.upper())
 
       for attribute in attributes:
         default = attribute.attribute_values[0]
