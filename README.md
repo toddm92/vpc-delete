@@ -9,16 +9,16 @@ This Python script attempts to delete the AWS default VPC.
    * Boto3 Version: 1.7.50
 * Valid AWS API keys/profile
 
-** Setup **
+**Setup:**
 
 Update with your AWS profile and the region in which you want to remove the default VPC.
-
-More detials can be found here:
-https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
 
 ```
 main(profile = 'My_AWS_Profile', region = 'us-west-2')
 ```
+
+More detials can be found here:
+https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
 
 **Usage:**
 
