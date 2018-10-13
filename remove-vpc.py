@@ -1,150 +1,254 @@
-#!/usr/bin/env python
-#
-# Python Version: 2.7
-# Boto Version 2.38
-#
-# Remove those pesky default VPCs
-#
-# Warning: Deleting the default VPC is a permanent action.
-#          You must contact AWS Support if you want to create a new default VPC.
-#
+"""
 
-# Must be the first line
-from __future__ import print_function
+Remove those pesky AWS default VPCs.
 
-import sys
-import boto.vpc
-import boto.ec2
+Python Version: 3.7.0
+Boto3 Version: 1.7.50
 
-VERBOSE = 1
+"""
 
-def get_regions():
-  """ Build a region list """
+import boto3
+from botocore.exceptions import ClientError
 
-  reg_list = []
-  for reg in boto.vpc.regions():
-    if reg.name == 'us-gov-west-1' or reg.name == 'cn-north-1':
-      continue
-    reg_list.append(reg)
 
-  return reg_list
-
-def del_igw(conn, vpcid):
-  """ Detach and delete the internet-gateway """
-      
-  igw = conn.get_all_internet_gateways(filters={'attachment.vpc-id': vpcid})
-  if igw:
-    try:
-      print("Removing igw-id: ", igw[0].id) if (VERBOSE == 1) else ""
-      conn.detach_internet_gateway(igw[0].id, vpcid)
-      status = conn.delete_internet_gateway(igw[0].id)
-    except boto.exception.EC2ResponseError as e:
-      print(e.message)
-
-def del_sub(conn, vpcid):
-  """ Delete the subnets """
-      
-  subs = conn.get_all_subnets(filters={'vpcId': [vpcid]})
-  if subs:
-    try:
-      for sub in subs: 
-        print("Removing sub-id: ", sub.id) if (VERBOSE == 1) else ""
-        status = conn.delete_subnet(sub.id)
-    except boto.exception.EC2ResponseError as e:
-      print(e.message)
-
-def del_rtb(conn, vpcid):
-  """ Delete the route-tables """
-      
-  rtbs = conn.get_all_route_tables(filters={'vpc-id': vpcid})
-  if rtbs:
-    try:
-      for tbl in rtbs:
-        for assoc in tbl.associations:
-          main = 'true' if (assoc.main == True) else 'false'
-        if main == 'true':
-          continue
-        print("Removing rtb-id: ", tbl.id) if (VERBOSE == 1) else ""
-        status = conn.delete_route_table(tbl.id)
-    except boto.exception.EC2ResponseError as e:
-      print(e.message)
-
-def del_acl(conn, vpcid):
-  """ Delete the network-access-lists """
-      
-  acls = conn.get_all_network_acls(filters={'vpc-id': vpcid})
-  if acls:
-    try:
-      for acl in acls: 
-        if acl.default == 'true':
-          continue
-        print("Removing acl-id: ", acl.id) if (VERBOSE == 1) else ""
-        status = conn.delete_network_acl(acl.id)
-    except boto.exception.EC2ResponseError as e:
-      print(e.message)
-
-def del_sgp(conn, vpcid):
-  """ Delete any security-groups """
-      
-  sgps = conn.get_all_security_groups(filters={'vpc-id': vpcid})
-  if sgps:
-    try:
-      for sg in sgps: 
-        if sg.name == 'default':
-          continue
-        print("Removing sgp-id: ", sg.id) if (VERBOSE == 1) else ""
-        status = conn.delete_security_group(group_id=sg.id)
-    except boto.exception.EC2ResponseError as e:
-      print(e.message)
-
-def del_vpc(conn, vpcid):
-  """ Delete the VPC """
-      
-  try:
-    print("Removing vpc-id: ", vpcid)
-    status = conn.delete_vpc(vpcid)
-  except boto.exception.EC2ResponseError as e:
-      print(e.message)
-      print("Please remove dependencies and delete VPC manually.")
-  #finally:
-  #  return status
-
-def main(keyid, secret):
+def delete_igw(ec2, vpc_id):
   """
-  Do the work - order of operation
+  Detach and delete the internet gateway
+  """
 
-  1.) Delete the internet-gateway
+  try:
+    igw = ec2.describe_internet_gateways(
+            Filters = [
+              {
+                'Name' : 'attachment.vpc-id',
+                'Values' : [ vpc_id ]
+              }
+            ]
+          )['InternetGateways']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  if igw:
+    igw_id = igw[0]['InternetGatewayId']
+
+    try:
+      ec2.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
+    except ClientError as e:
+      print(e.response['Error']['Message'])
+
+    try:
+      ec2.delete_internet_gateway(InternetGatewayId=igw_id)
+    except ClientError as e:
+      print(e.response['Error']['Message'])
+
+  return
+
+
+def delete_subs(ec2, vpc_id):
+  """
+  Delete the subnets
+  """
+
+  try:
+    subs = ec2.describe_subnets(
+             Filters = [
+               {
+                 'Name' : 'vpc-id',
+                 'Values' : [ vpc_id ]
+               }
+             ]
+           )['Subnets']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  if subs:
+    for sub in subs:
+      sub_id = sub['SubnetId']
+
+      try:
+        ec2.delete_subnet(SubnetId=sub_id)
+      except ClientError as e:
+        print(e.response['Error']['Message'])
+
+  return
+
+
+def delete_rtbs(ec2, vpc_id):
+  """
+  Delete the route tables
+  """
+
+  try:
+    rtbs = ec2.describe_route_tables(
+             Filters = [
+               {
+                 'Name' : 'vpc-id',
+                 'Values' : [ vpc_id ]
+               }
+             ]
+           )['RouteTables']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  if rtbs:
+    for rtb in rtbs:
+      main = 'false'
+      for assoc in rtb['Associations']:
+        main = assoc['Main']
+      if main == True:
+        continue
+      rtb_id = rtb['RouteTableId']
+        
+      try:
+        ec2.delete_route_table(RouteTableId=rtb_id)
+      except ClientError as e:
+        print(e.response['Error']['Message'])
+
+  return
+
+
+def delete_acls(ec2, vpc_id):
+  """
+  Delete the network access lists (NACLs)
+  """
+
+  try:
+    acls = ec2.describe_network_acls(
+             Filters = [
+               {
+                 'Name' : 'vpc-id',
+                 'Values' : [ vpc_id ]
+               }
+             ]
+           )['NetworkAcls']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  if acls:
+    for acl in acls:
+      default = acl['IsDefault']
+      if default == True:
+        continue
+      acl_id = acl['NetworkAclId']
+
+      try:
+        ec2.delete_network_acl(NetworkAclId=acl_id)
+      except ClientError as e:
+        print(e.response['Error']['Message'])
+
+  return
+
+
+def delete_sgps(ec2, vpc_id):
+  """
+  Delete any security groups
+  """
+
+  try:
+    sgps = ec2.describe_security_groups(
+             Filters = [
+               {
+                 'Name' : 'vpc-id',
+                 'Values' : [ vpc_id ]
+               }
+             ]
+           )['SecurityGroups']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  if sgps:
+    for sgp in sgps:
+      default = sgp['GroupName']
+      if default == 'default':
+        continue
+      sg_id = sgp['GroupId']
+
+      try:
+        ec2.delete_security_group(GroupId=sg_id)
+      except ClientError as e:
+        print(e.response['Error']['Message'])
+
+  return
+
+
+def delete_vpc(ec2, vpc_id, region):
+  """
+  Delete the VPC
+  """
+
+  try:
+    ec2.delete_vpc(VpcId=vpc_id)
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  else:
+    print('VPC {} has been deleted from the {} region.'.format(vpc_id, region))
+
+  return
+
+
+def main(profile, region):
+  """
+  Do the work..
+
+  Order of operation:
+
+  1.) Delete the internet gateway
   2.) Delete subnets
-  3.) Delete route-tables
-  4.) Delete network access-lists
-  5.) Delete security-groups
+  3.) Delete route tables
+  4.) Delete network access lists
+  5.) Delete security groups
   6.) Delete the VPC 
   """
 
-  regions = get_regions()
+  # AWS Credentials
+  # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
+  #
+  session = boto3.Session(profile_name=profile)
+  ec2  = session.client('ec2', region_name=region)
 
-  for region in regions:
-    try:
-      conn = boto.vpc.VPCConnection(aws_access_key_id=keyid, aws_secret_access_key=secret, region=region)
-      attributes = conn.describe_account_attributes(attribute_names='default-vpc')
-    except boto.exception.EC2ResponseError as e:
-      print(e.message)
-      exit(1)
-    else:
-      print("\n" + region.name.upper())
+  try:
+    attribs = ec2.describe_account_attributes(AttributeNames=[ 'default-vpc' ])['AccountAttributes']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+    return
 
-      for attribute in attributes:
-        default = attribute.attribute_values[0]
-        print("Default  vpc-id: ", default)
+  else:
+    vpc_id = attribs[0]['AttributeValues'][0]['AttributeValue']
 
-      if default != 'none':
-        del_igw(conn, default)
-        del_sub(conn, default)
-        del_rtb(conn, default)
-        del_acl(conn, default)
-        del_sgp(conn, default)
-        del_vpc(conn, default)
+  if vpc_id == 'none':
+    print('A default VPC was not found in the {} region.'.format(region))
+    return
+
+  # Are there any existing resources?  Since most resources attach an ENI, let's check..
+  try:
+    eni = ec2.describe_network_interfaces(
+            Filters = [
+              {
+                'Name': 'vpc-id',
+                'Values': [ vpc_id ]
+              }
+            ]
+          )['NetworkInterfaces']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+    return
+
+  if eni:
+    print('VPC {} has existing resources.'.format(vpc_id))
+    return
+
+  result = delete_igw(ec2, vpc_id)
+  result = delete_subs(ec2, vpc_id)
+  result = delete_rtbs(ec2, vpc_id)
+  result = delete_acls(ec2, vpc_id)
+  result = delete_sgps(ec2, vpc_id)
+  result = delete_vpc(ec2, vpc_id, region)
+
+  return
+
 
 if __name__ == "__main__":
 
-  main(keyid = 'XXXX', secret = 'XXXX')
+  main(profile = 'My_AWS_Profile', region = 'us-west-2')
+
