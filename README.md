@@ -5,8 +5,9 @@ This Python script attempts to delete the AWS default VPC.
 **Requirements:**
 
 * Tested with:
-   * Python Version: 3.7.0
-   * Boto3 Version: 1.7.50
+   * Python version: 3.7.0
+   * Boto3 version: 1.7.50
+   * Botocore version: 1.10.50
 * Valid AWS API keys/profile
 
 **Setup:**
