@@ -18,7 +18,7 @@ Update with your AWS profile and the region in which you want to remove the defa
 main(profile = 'My_AWS_Profile', region = 'us-west-2')
 ```
 
-More detials can be found here:
+Details can be found here:
 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
 
 **Usage:**
