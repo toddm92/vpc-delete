@@ -187,7 +187,26 @@ def delete_vpc(ec2, vpc_id, region):
   return
 
 
-def main(profile, region):
+def get_regions(ec2):
+  """
+  Return all AWS regions
+  """
+
+  regions = []
+
+  try:
+    aws_regions = ec2.describe_regions()['Regions']
+  except ClientError as e:
+    print(e.response['Error']['Message'])
+
+  else:
+    for region in aws_regions:
+      regions.append(region['RegionName'])
+
+  return regions
+
+
+def main(profile):
   """
   Do the work..
 
@@ -205,50 +224,55 @@ def main(profile, region):
   # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
   #
   session = boto3.Session(profile_name=profile)
-  ec2  = session.client('ec2', region_name=region)
+  ec2 = session.client('ec2', region_name='us-east-1')
 
-  try:
-    attribs = ec2.describe_account_attributes(AttributeNames=[ 'default-vpc' ])['AccountAttributes']
-  except ClientError as e:
-    print(e.response['Error']['Message'])
-    return
+  regions = get_regions(ec2)
+  for region in regions:
 
-  else:
-    vpc_id = attribs[0]['AttributeValues'][0]['AttributeValue']
+    ec2 = session.client('ec2', region_name=region)
 
-  if vpc_id == 'none':
-    print('A default VPC was not found in the {} region.'.format(region))
-    return
+    try:
+      attribs = ec2.describe_account_attributes(AttributeNames=[ 'default-vpc' ])['AccountAttributes']
+    except ClientError as e:
+      print(e.response['Error']['Message'])
+      return
 
-  # Are there any existing resources?  Since most resources attach an ENI, let's check..
-  try:
-    eni = ec2.describe_network_interfaces(
-            Filters = [
-              {
-                'Name': 'vpc-id',
-                'Values': [ vpc_id ]
-              }
-            ]
-          )['NetworkInterfaces']
-  except ClientError as e:
-    print(e.response['Error']['Message'])
-    return
+    else:
+      vpc_id = attribs[0]['AttributeValues'][0]['AttributeValue']
 
-  if eni:
-    print('VPC {} has existing resources.'.format(vpc_id))
-    return
+    if vpc_id == 'none':
+      print('VPC (default) was not found in the {} region.'.format(region))
+      continue
 
-  result = delete_igw(ec2, vpc_id)
-  result = delete_subs(ec2, vpc_id)
-  result = delete_rtbs(ec2, vpc_id)
-  result = delete_acls(ec2, vpc_id)
-  result = delete_sgps(ec2, vpc_id)
-  result = delete_vpc(ec2, vpc_id, region)
+    # Are there any existing resources?  Since most resources attach an ENI, let's check..
+    try:
+      eni = ec2.describe_network_interfaces(
+              Filters = [
+                {
+                  'Name': 'vpc-id',
+                  'Values': [ vpc_id ]
+                }
+              ]
+            )['NetworkInterfaces']
+    except ClientError as e:
+      print(e.response['Error']['Message'])
+      return
+
+    if eni:
+      print('VPC {} has existing resources in the {} region.'.format(vpc_id, region))
+      continue
+
+    result = delete_igw(ec2, vpc_id)
+    result = delete_subs(ec2, vpc_id)
+    result = delete_rtbs(ec2, vpc_id)
+    result = delete_acls(ec2, vpc_id)
+    result = delete_sgps(ec2, vpc_id)
+    result = delete_vpc(ec2, vpc_id, region)
 
   return
 
 
 if __name__ == "__main__":
 
-  main(profile = 'My_AWS_Profile', region = 'us-west-2')
+  main(profile = '<YOUR_PROFILE>')
 
