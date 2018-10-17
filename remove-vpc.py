@@ -16,15 +16,17 @@ def delete_igw(ec2, vpc_id):
   Detach and delete the internet gateway
   """
 
+  args = {
+    'Filters' : [
+      {
+        'Name' : 'attachment.vpc-id',
+        'Values' : [ vpc_id ]
+      }
+    ]
+  }
+
   try:
-    igw = ec2.describe_internet_gateways(
-            Filters = [
-              {
-                'Name' : 'attachment.vpc-id',
-                'Values' : [ vpc_id ]
-              }
-            ]
-          )['InternetGateways']
+    igw = ec2.describe_internet_gateways(**args)['InternetGateways']
   except ClientError as e:
     print(e.response['Error']['Message'])
 
@@ -32,32 +34,25 @@ def delete_igw(ec2, vpc_id):
     igw_id = igw[0]['InternetGatewayId']
 
     try:
-      ec2.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
+      result = ec2.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
     except ClientError as e:
       print(e.response['Error']['Message'])
 
     try:
-      ec2.delete_internet_gateway(InternetGatewayId=igw_id)
+      result = ec2.delete_internet_gateway(InternetGatewayId=igw_id)
     except ClientError as e:
       print(e.response['Error']['Message'])
 
   return
 
 
-def delete_subs(ec2, vpc_id):
+def delete_subs(ec2, args):
   """
   Delete the subnets
   """
 
   try:
-    subs = ec2.describe_subnets(
-             Filters = [
-               {
-                 'Name' : 'vpc-id',
-                 'Values' : [ vpc_id ]
-               }
-             ]
-           )['Subnets']
+    subs = ec2.describe_subnets(**args)['Subnets']
   except ClientError as e:
     print(e.response['Error']['Message'])
 
@@ -66,27 +61,20 @@ def delete_subs(ec2, vpc_id):
       sub_id = sub['SubnetId']
 
       try:
-        ec2.delete_subnet(SubnetId=sub_id)
+        result = ec2.delete_subnet(SubnetId=sub_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
 
   return
 
 
-def delete_rtbs(ec2, vpc_id):
+def delete_rtbs(ec2, args):
   """
   Delete the route tables
   """
 
   try:
-    rtbs = ec2.describe_route_tables(
-             Filters = [
-               {
-                 'Name' : 'vpc-id',
-                 'Values' : [ vpc_id ]
-               }
-             ]
-           )['RouteTables']
+    rtbs = ec2.describe_route_tables(**args)['RouteTables']
   except ClientError as e:
     print(e.response['Error']['Message'])
 
@@ -100,27 +88,20 @@ def delete_rtbs(ec2, vpc_id):
       rtb_id = rtb['RouteTableId']
         
       try:
-        ec2.delete_route_table(RouteTableId=rtb_id)
+        result = ec2.delete_route_table(RouteTableId=rtb_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
 
   return
 
 
-def delete_acls(ec2, vpc_id):
+def delete_acls(ec2, args):
   """
   Delete the network access lists (NACLs)
   """
 
   try:
-    acls = ec2.describe_network_acls(
-             Filters = [
-               {
-                 'Name' : 'vpc-id',
-                 'Values' : [ vpc_id ]
-               }
-             ]
-           )['NetworkAcls']
+    acls = ec2.describe_network_acls(**args)['NetworkAcls']
   except ClientError as e:
     print(e.response['Error']['Message'])
 
@@ -132,27 +113,20 @@ def delete_acls(ec2, vpc_id):
       acl_id = acl['NetworkAclId']
 
       try:
-        ec2.delete_network_acl(NetworkAclId=acl_id)
+        result = ec2.delete_network_acl(NetworkAclId=acl_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
 
   return
 
 
-def delete_sgps(ec2, vpc_id):
+def delete_sgps(ec2, args):
   """
   Delete any security groups
   """
 
   try:
-    sgps = ec2.describe_security_groups(
-             Filters = [
-               {
-                 'Name' : 'vpc-id',
-                 'Values' : [ vpc_id ]
-               }
-             ]
-           )['SecurityGroups']
+    sgps = ec2.describe_security_groups(**args)['SecurityGroups']
   except ClientError as e:
     print(e.response['Error']['Message'])
 
@@ -164,7 +138,7 @@ def delete_sgps(ec2, vpc_id):
       sg_id = sgp['GroupId']
 
       try:
-        ec2.delete_security_group(GroupId=sg_id)
+        result = ec2.delete_security_group(GroupId=sg_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
 
@@ -177,7 +151,7 @@ def delete_vpc(ec2, vpc_id, region):
   """
 
   try:
-    ec2.delete_vpc(VpcId=vpc_id)
+    result = ec2.delete_vpc(VpcId=vpc_id)
   except ClientError as e:
     print(e.response['Error']['Message'])
 
@@ -222,11 +196,12 @@ def main(profile):
 
   # AWS Credentials
   # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
-  #
+
   session = boto3.Session(profile_name=profile)
   ec2 = session.client('ec2', region_name='us-east-1')
 
   regions = get_regions(ec2)
+
   for region in regions:
 
     ec2 = session.client('ec2', region_name=region)
@@ -245,15 +220,18 @@ def main(profile):
       continue
 
     # Are there any existing resources?  Since most resources attach an ENI, let's check..
+
+    args = {
+      'Filters' : [
+        {
+          'Name' : 'vpc-id',
+          'Values' : [ vpc_id ]
+        }
+      ]
+    }
+
     try:
-      eni = ec2.describe_network_interfaces(
-              Filters = [
-                {
-                  'Name': 'vpc-id',
-                  'Values': [ vpc_id ]
-                }
-              ]
-            )['NetworkInterfaces']
+      eni = ec2.describe_network_interfaces(**args)['NetworkInterfaces']
     except ClientError as e:
       print(e.response['Error']['Message'])
       return
@@ -263,10 +241,10 @@ def main(profile):
       continue
 
     result = delete_igw(ec2, vpc_id)
-    result = delete_subs(ec2, vpc_id)
-    result = delete_rtbs(ec2, vpc_id)
-    result = delete_acls(ec2, vpc_id)
-    result = delete_sgps(ec2, vpc_id)
+    result = delete_subs(ec2, args)
+    result = delete_rtbs(ec2, args)
+    result = delete_acls(ec2, args)
+    result = delete_sgps(ec2, args)
     result = delete_vpc(ec2, vpc_id, region)
 
   return
