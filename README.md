@@ -18,9 +18,6 @@ Update with your AWS profile / credentials.
 main(profile = '<YOUR_PROFILE>')
 ```
 
-Details can be found here:
-https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
-
 **Usage:**
 
 ```
@@ -47,5 +44,7 @@ VPC (default) was not found in the us-west-1 region.
 VPC vpc-1839c57d has existing resources in the us-west-2 region.
 ```
 
-**To Do:**
+**References:**
+
+* https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
 
