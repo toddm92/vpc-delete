@@ -21,7 +21,7 @@ main(profile = '<YOUR_PROFILE>')
 **Usage:**
 
 ```
-python remove-vpc.py
+python remove_vpc.py
 ```
 
 **Output:**
