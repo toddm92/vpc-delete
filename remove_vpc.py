@@ -8,6 +8,9 @@ Boto3 Version: 1.7.50
 import sys
 import boto3
 from botocore.exceptions import ClientError
+from multiprocessing.dummy import Pool as ThreadPool
+import itertools
+
 dryrun = True
 
 def delete_igw(ec2, vpc_id):
@@ -156,7 +159,8 @@ def get_regions(ec2):
       regions.append(region['RegionName'])
   return regions
 
-def main(profile):
+
+def delete_everything_in_region(ec2, session, region=None):
   """
   Do the work..
   Order of operation:
@@ -167,50 +171,47 @@ def main(profile):
   5.) Delete security groups
   6.) Delete the VPC
   """
+  print("Scanning Region: " + str(region))
+  ec2 = session.client('ec2', region_name=region)
+  attribs = ec2.describe_account_attributes(AttributeNames=[ 'default-vpc' ])['AccountAttributes']
+  if len(attribs) > 0:
+      vpc_id = attribs[0]['AttributeValues'][0]['AttributeValue']
+  else:
+    print('VPC (default) was not found in the {} region.'.format(region))
+    return
+  print(" Removing VPC: " + str(vpc_id))
+  # Are there any existing resources?  Since most resources attach an ENI, let's check..
+  args = {
+    'Filters' : [
+      {
+        'Name' : 'vpc-id',
+        'Values' : [ vpc_id ]
+      }
+    ]
+  }
+  eni = ec2.describe_network_interfaces(**args)['NetworkInterfaces']
+  if eni:
+    print(' VPC {} has existing resources in the {} region.'.format(vpc_id, region))
+    return
+  result = delete_igw(ec2, vpc_id)
+  result = delete_subs(ec2, args)
+  result = delete_rtbs(ec2, args)
+  result = delete_acls(ec2, args)
+  result = delete_sgps(ec2, args)
+  result = delete_vpc(ec2, vpc_id, region)
+
+
+def main(profile=None):
   # AWS Credentials
   # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
   session = boto3.Session(profile_name=profile)
   ec2 = session.client('ec2', region_name='us-east-1')
   regions = get_regions(ec2)
-  if dryrun: print("Dryrun not actually deleting anything")
-  for region in regions:
-    print("Scanning Region: " + str(region))
-    ec2 = session.client('ec2', region_name=region)
-    try:
-      attribs = ec2.describe_account_attributes(AttributeNames=[ 'default-vpc' ])['AccountAttributes']
-    except ClientError as e:
-      print(e.response['Error']['Message'])
-      return
-    else:
-      vpc_id = attribs[0]['AttributeValues'][0]['AttributeValue']
-    if vpc_id == 'none':
-      print('VPC (default) was not found in the {} region.'.format(region))
-      continue
-    print(" Removing VPC: " + str(vpc_id))
-    # Are there any existing resources?  Since most resources attach an ENI, let's check..
-    args = {
-      'Filters' : [
-        {
-          'Name' : 'vpc-id',
-          'Values' : [ vpc_id ]
-        }
-      ]
-    }
-    try:
-      eni = ec2.describe_network_interfaces(**args)['NetworkInterfaces']
-    except ClientError as e:
-      print(e.response['Error']['Message'])
-      return
-    if eni:
-      print(' VPC {} has existing resources in the {} region.'.format(vpc_id, region))
-      continue
-    result = delete_igw(ec2, vpc_id)
-    result = delete_subs(ec2, args)
-    result = delete_rtbs(ec2, args)
-    result = delete_acls(ec2, args)
-    result = delete_sgps(ec2, args)
-    result = delete_vpc(ec2, vpc_id, region)
-  return
+  if dryrun: print("Dryrun, not actually deleting anything")
+  pool = ThreadPool(len(regions))
+  pool.starmap(delete_everything_in_region, zip(itertools.repeat(ec2), itertools.repeat(session), regions))
+  pool.close()
+  pool.join()  # wait for parallel requests to complete
 
 
 if __name__ == "__main__":
@@ -221,7 +222,4 @@ if __name__ == "__main__":
     dryrun = (sys.argv[2] == True)
     main(profile = sys.argv[1])
   else:
-    print("Usage: python3 remove_vpc.py <profilename> <dryrun>")
-    print("Usage: python3 remove_vpc.py development True")
-    print("Usage: python3 remove_vpc.py development False")
-    print("Usage: NOTE: dryrun defaults to True if excluded")
+    main()
