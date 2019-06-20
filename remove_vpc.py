@@ -11,9 +11,7 @@ from botocore.exceptions import ClientError
 from multiprocessing.dummy import Pool as ThreadPool
 import itertools
 
-dryrun = True
-
-def delete_igw(ec2, vpc_id):
+def delete_igw(ec2, vpc_id, dryrun=True):
   """
   Detach and delete the internet gateway
   """
@@ -43,7 +41,7 @@ def delete_igw(ec2, vpc_id):
       print(e.response['Error']['Message'])
 
 
-def delete_subs(ec2, args):
+def delete_subs(ec2, args, dryrun=True):
   """
   Delete the subnets
   """
@@ -61,7 +59,7 @@ def delete_subs(ec2, args):
         print(e.response['Error']['Message'])
 
 
-def delete_rtbs(ec2, args):
+def delete_rtbs(ec2, args, dryrun):
   """
   Delete the route tables
   """
@@ -79,12 +77,12 @@ def delete_rtbs(ec2, args):
       rtb_id = rtb['RouteTableId']
       try:
         print("  Deleting " + str(rtb_id))
-        if (dryrun != True): = ec2.delete_route_table(RouteTableId=rtb_id)
+        if (dryrun != True): ec2.delete_route_table(RouteTableId=rtb_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
 
 
-def delete_acls(ec2, args):
+def delete_acls(ec2, args, dryrun=True):
   """
   Delete the network access lists (NACLs)
   """
@@ -105,7 +103,7 @@ def delete_acls(ec2, args):
         print(e.response['Error']['Message'])
 
 
-def delete_sgps(ec2, args):
+def delete_sgps(ec2, args, dryrun=True):
   """
   Delete any security groups
   """
@@ -126,7 +124,7 @@ def delete_sgps(ec2, args):
         print(e.response['Error']['Message'])
 
 
-def delete_vpc(ec2, vpc_id, region):
+def delete_vpc(ec2, vpc_id, region, dryrun=True):
   """
   Delete the VPC
   """
@@ -154,7 +152,7 @@ def get_regions(ec2):
   return regions
 
 
-def delete_everything_in_region(ec2, session, region=None):
+def delete_everything_in_region(ec2, session, region=None, dryrun=True):
   """
   Do the work..
   Order of operation:
@@ -168,11 +166,15 @@ def delete_everything_in_region(ec2, session, region=None):
   print("Scanning Region: " + str(region))
   ec2 = session.client('ec2', region_name=region)
   attribs = ec2.describe_account_attributes(AttributeNames=[ 'default-vpc' ])['AccountAttributes']
+  vpc_id = 'none'
   if len(attribs) > 0:
       vpc_id = attribs[0]['AttributeValues'][0]['AttributeValue']
-  else:
+
+  
+  if vpc_id == 'none':
     print('VPC (default) was not found in the {} region.'.format(region))
     return
+
   print(" Removing VPC: " + str(vpc_id))
   # Are there any existing resources?  Since most resources attach an ENI, let's check..
   args = {
@@ -187,15 +189,15 @@ def delete_everything_in_region(ec2, session, region=None):
   if eni:
     print(' VPC {} has existing resources in the {} region.'.format(vpc_id, region))
     return
-  delete_igw(ec2, vpc_id)
-  delete_subs(ec2, args)
-  delete_rtbs(ec2, args)
-  delete_acls(ec2, args)
-  delete_sgps(ec2, args)
-  delete_vpc(ec2, vpc_id, region)
+  delete_igw(ec2, vpc_id, dryrun)
+  delete_subs(ec2, args, dryrun)
+  delete_rtbs(ec2, args, dryrun)
+  delete_acls(ec2, args, dryrun)
+  delete_sgps(ec2, args, dryrun)
+  delete_vpc(ec2, vpc_id, region, dryrun)
 
 
-def main(profile=None):
+def main(profile=None, dryrun=True):
   # AWS Credentials
   # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
   session = boto3.Session(profile_name=profile)
@@ -203,17 +205,17 @@ def main(profile=None):
   regions = get_regions(ec2)
   if dryrun: print("Dryrun, not actually deleting anything")
   pool = ThreadPool(len(regions))
-  pool.starmap(delete_everything_in_region, zip(itertools.repeat(ec2), itertools.repeat(session), regions))
+  pool.starmap(delete_everything_in_region, zip(itertools.repeat(ec2), itertools.repeat(session), regions, itertools.repeat(dryrun)))
   pool.close()
   pool.join()  # wait for parallel requests to complete
 
 
 if __name__ == "__main__":
-  if ( len(sys.argv) == 2):
+  if (len(sys.argv) == 2):
     dryrun = True
-    main(profile = sys.argv[1])
-  elif ( len(sys.argv) == 3):
+    main(profile=sys.argv[1])
+  elif (len(sys.argv) == 3):
     dryrun = (sys.argv[2] == True)
-    main(profile = sys.argv[1])
+    main(profile=sys.argv[1], dryrun=dryrun)
   else:
     main()
