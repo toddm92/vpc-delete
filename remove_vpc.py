@@ -33,15 +33,14 @@ def delete_igw(ec2, vpc_id):
     igw_id = igw[0]['InternetGatewayId']
     try:
       print("  Detaching " + str(igw_id))
-      if (dryrun != True): result = ec2.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
+      if (dryrun != True): ec2.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
     except ClientError as e:
       print(e.response['Error']['Message'])
     try:
       print("  Deleting " + str(igw_id))
-      if (dryrun != True): result = ec2.delete_internet_gateway(InternetGatewayId=igw_id)
+      if (dryrun != True): ec2.delete_internet_gateway(InternetGatewayId=igw_id)
     except ClientError as e:
       print(e.response['Error']['Message'])
-  return
 
 
 def delete_subs(ec2, args):
@@ -57,10 +56,9 @@ def delete_subs(ec2, args):
       sub_id = sub['SubnetId']
       try:
         print("  Deleting " + str(sub_id))
-        if (dryrun != True): result = ec2.delete_subnet(SubnetId=sub_id)
+        if (dryrun != True): ec2.delete_subnet(SubnetId=sub_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
-  return
 
 
 def delete_rtbs(ec2, args):
@@ -81,10 +79,9 @@ def delete_rtbs(ec2, args):
       rtb_id = rtb['RouteTableId']
       try:
         print("  Deleting " + str(rtb_id))
-        if (dryrun != True): result = ec2.delete_route_table(RouteTableId=rtb_id)
+        if (dryrun != True): = ec2.delete_route_table(RouteTableId=rtb_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
-  return
 
 
 def delete_acls(ec2, args):
@@ -103,10 +100,9 @@ def delete_acls(ec2, args):
       acl_id = acl['NetworkAclId']
       try:
         print("  Deleting " + str(acl_id))
-        if (dryrun != True): result = ec2.delete_network_acl(NetworkAclId=acl_id)
+        if (dryrun != True): ec2.delete_network_acl(NetworkAclId=acl_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
-  return
 
 
 def delete_sgps(ec2, args):
@@ -125,10 +121,9 @@ def delete_sgps(ec2, args):
       sg_id = sgp['GroupId']
       try:
         print("  Deleting " + str(sg_id))
-        if (dryrun != True): result = ec2.delete_security_group(GroupId=sg_id)
+        if (dryrun != True): ec2.delete_security_group(GroupId=sg_id)
       except ClientError as e:
         print(e.response['Error']['Message'])
-  return
 
 
 def delete_vpc(ec2, vpc_id, region):
@@ -137,12 +132,11 @@ def delete_vpc(ec2, vpc_id, region):
   """
   try:
     print("  Deleting " + str(vpc_id))
-    if (dryrun != True): result = ec2.delete_vpc(VpcId=vpc_id)
+    if (dryrun != True): ec2.delete_vpc(VpcId=vpc_id)
   except ClientError as e:
     print(e.response['Error']['Message'])
   else:
     print('VPC {} has been deleted from the {} region.'.format(vpc_id, region))
-  return
 
 
 def get_regions(ec2):
@@ -193,12 +187,12 @@ def delete_everything_in_region(ec2, session, region=None):
   if eni:
     print(' VPC {} has existing resources in the {} region.'.format(vpc_id, region))
     return
-  result = delete_igw(ec2, vpc_id)
-  result = delete_subs(ec2, args)
-  result = delete_rtbs(ec2, args)
-  result = delete_acls(ec2, args)
-  result = delete_sgps(ec2, args)
-  result = delete_vpc(ec2, vpc_id, region)
+  delete_igw(ec2, vpc_id)
+  delete_subs(ec2, args)
+  delete_rtbs(ec2, args)
+  delete_acls(ec2, args)
+  delete_sgps(ec2, args)
+  delete_vpc(ec2, vpc_id, region)
 
 
 def main(profile=None):
