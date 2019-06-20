@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 
 Remove those pesky AWS default VPCs.
