@@ -16,6 +16,8 @@ This Python script attempts to delete the AWS default VPC in each region in para
 ./remove_vpc.py [profile] [dryrun_bool]
 ```
 
+Defaults to using your current AWS credentials and running with dryrun enabled.
+
 **Output:**
 
 ```
