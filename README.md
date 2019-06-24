@@ -1,27 +1,19 @@
 ### Remove AWS Default VPCs
 
-This Python script attempts to delete the AWS default VPC in each region.
+This Python script attempts to delete the AWS default VPC in each region in parallel.
 
 **Requirements:**
 
 * Tested with:
    * Python version: 3.7.0
-   * Boto3 version: 1.7.50
-   * Botocore version: 1.10.50
+   * Boto3 version: 1.9.143
+   * Botocore version: 1.12.154
 * Valid AWS API keys/profile
-
-**Setup:**
-
-Update with your AWS profile / credentials.
-
-```
-main(profile = '<YOUR_PROFILE>')
-```
 
 **Usage:**
 
 ```
-python remove_vpc.py
+./remove_vpc.py [profile] [dryrun_bool]
 ```
 
 **Output:**

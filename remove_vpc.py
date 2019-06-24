@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Remove those pesky AWS default VPCs.
-Python Version: 3.7.0
-Boto3 Version: 1.7.50
+Python Version: 3.7.3
+Boto3 Version: 1.9.143
+Botocore version: 1.12.154
 """
 
 import sys
