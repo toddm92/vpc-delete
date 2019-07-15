@@ -147,6 +147,7 @@ def get_regions(ec2):
     aws_regions = ec2.describe_regions()['Regions']
   except ClientError as e:
     print(e.response['Error']['Message'])
+    raise
   else:
     for region in aws_regions:
       regions.append(region['RegionName'])
