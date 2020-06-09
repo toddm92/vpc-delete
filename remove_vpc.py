@@ -173,7 +173,7 @@ def get_regions(ec2):
     return regions
 
 
-def main(profile):
+def main():
     """
   Do the work..
 
@@ -190,7 +190,7 @@ def main(profile):
     # AWS Credentials
     # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
 
-    session = boto3.Session(profile_name=profile)
+    session = boto3.Session()
     ec2 = session.client("ec2", region_name="us-east-1")
 
     regions = get_regions(ec2)
@@ -241,6 +241,4 @@ def main(profile):
 
 
 if __name__ == "__main__":
-
-    main(profile="<YOUR_PROFILE>")
-
+    main()
