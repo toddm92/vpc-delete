@@ -145,12 +145,13 @@ def main():
 
     Order of operation:
 
-    1.) Delete the internet gateway
-    2.) Delete subnets
-    3.) Delete route tables
-    4.) Delete network access lists
-    5.) Delete security groups
-    6.) Delete the VPC
+    1.) Confirm that the VPC has no allocated network interfaces
+    2.) Delete the internet gateway
+    3.) Delete subnets
+    4.) Delete route tables
+    5.) Delete network access lists
+    6.) Delete security groups
+    7.) Delete the VPC
     """
 
     # AWS Credentials
