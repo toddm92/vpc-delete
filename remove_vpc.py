@@ -81,13 +81,18 @@ def delete_sgps(ec2, args):
 
     sgps = ec2.describe_security_groups(**args)["SecurityGroups"]
 
-    if sgps:
-        for sgp in sgps:
-            default = sgp["GroupName"]
-            if default == "default":
-                continue
-            sg_id = sgp["GroupId"]
-            ec2.delete_security_group(GroupId=sg_id)
+    non_default_sg_ids = [i["GroupId"] for i in sgps if i["GroupName"] != "default"]
+    tries = 0
+    max_tries = len(sgps)
+
+    while len(non_default_sg_ids) > 1 and tries < max_tries:
+        for sg_id in non_default_sg_ids:
+            try:
+                ec2.delete_security_group(GroupId=sg_id)
+            except ClientError as exc:
+                print(exc, file=sys.stderr)
+
+        tries += 1
 
 
 def delete_vpc(ec2, vpc_id, region):
