@@ -61,10 +61,7 @@ def delete_acls(ec2, args):
     Delete the network access lists (NACLs)
     """
 
-    try:
-        acls = ec2.describe_network_acls(**args)["NetworkAcls"]
-    except ClientError as e:
-        print(e.response["Error"]["Message"])
+    acls = ec2.describe_network_acls(**args)["NetworkAcls"]
 
     for acl in acls:
         is_default = acl["IsDefault"]
@@ -79,10 +76,7 @@ def delete_sgps(ec2, args):
     Delete any security groups
     """
 
-    try:
-        sgps = ec2.describe_security_groups(**args)["SecurityGroups"]
-    except ClientError as e:
-        print(e.response["Error"]["Message"])
+    sgps = ec2.describe_security_groups(**args)["SecurityGroups"]
 
     if sgps:
         for sgp in sgps:
