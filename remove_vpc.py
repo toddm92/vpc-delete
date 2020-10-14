@@ -6,10 +6,13 @@ Python Version: 3.7.0
 Boto3 Version: 1.7.50
 
 """
+
+import concurrent.futures
 import sys
 
 import boto3
 from botocore.exceptions import ClientError
+import traceback
 
 
 def delete_igw(ec2, vpc_id):
@@ -105,7 +108,9 @@ def get_regions(ec2):
     return [region["RegionName"] for region in aws_regions]
 
 
-def process_region(ec2, region):
+def process_region(region):
+    ec2 = boto3.Session().client("ec2", region_name=region)
+
     try:
         attribs = ec2.describe_account_attributes(AttributeNames=["default-vpc"])
     except ClientError as e:
@@ -162,13 +167,19 @@ def main():
 
     regions = get_regions(ec2)
 
-    for region in regions:
-        ec2 = session.client("ec2", region_name=region)
-        try:
-            process_region(ec2, region)
-        except Exception as exc:
-            print(f"Unable to process region {region}: {exc}", file=sys.stderr)
-            continue
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(process_region, region): region for region in regions
+        }
+        for future in concurrent.futures.as_completed(futures):
+            region = futures[future]
+
+            try:
+                future.result()
+            except Exception as exc:
+                print(f"Error processing {region}: {exc}", file=sys.stderr)
+                if not isinstance(exc, (ClientError, RuntimeError)):
+                    traceback.print_exc(file=sys.stderr)
 
 
 if __name__ == "__main__":
