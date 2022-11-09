@@ -5,9 +5,9 @@ This Python script attempts to delete the AWS default VPC in each region.
 **Requirements:**
 
 * Tested with:
-   * Python version: 3.7.0
-   * Boto3 version: 1.7.50
-   * Botocore version: 1.10.50
+   * Python version: 3.10.8
+   * Boto3 version: 1.26.4
+   * Botocore version: 1.29.4
 * Valid AWS API keys/profile
 
 **Setup:**
